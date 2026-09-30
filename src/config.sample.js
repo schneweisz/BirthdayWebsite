@@ -5,6 +5,10 @@
 //  A képeket a  public/photos/  mappába tedd, és itt hivatkozz rájuk.
 // ─────────────────────────────────────────────────────────────
 
+// Hányadik szülinap – elég itt átírni, a szövegek lentebb ezt használják
+// (a gyertyák a tortán mindig "22"-t mutatnak)
+const age = 22;
+
 export const config = {
   // Az ünnepelt neve (a képeslapon és a végén jelenik meg)
   name: 'Anna',
@@ -18,8 +22,7 @@ export const config = {
     hint: 'Gondolj vissza a kezdetekre… 💭',
   },
 
-  // Hányadik szülinap – a gyertyák mindig "22"-t mutatnak, ez a szövegekhez kell
-  age: 22,
+  age,
 
   // Képeslap borítója
   coverTitle: ['Boldog', 'Szülinapot!'],
@@ -27,7 +30,7 @@ export const config = {
   // Képeslap belső, jobb oldala
   cardTitle: 'Drága Anna!',
   message:
-    'Ma egy különleges nap van, mert 22 évvel ezelőtt megszülettél, ' +
+    `Ma egy különleges nap van, mert ${age} évvel ezelőtt megszülettél, ` +
     'és azóta sokkal szebb lett a világ.\n' +
     'Kívánom, hogy ez az év hozzon rengeteg nevetést, kalandot, ' +
     'szeretetet és apró csodát. Maradj mindig ilyen ragyogó, kedves ' +
@@ -49,7 +52,7 @@ export const config = {
   ],
 
   // A gyertyák elfújása utáni finálé
-  finalTitle: 'Boldog 22. születésnapot!',
+  finalTitle: `Boldog ${age}. születésnapot!`,
   finalMessage: 'Kívánom, hogy minden álmod valóra váljon ✨',
 
   // A finálé alatt a tortára koppintva egy szelet emelkedik ki, benne ez az üzenet
