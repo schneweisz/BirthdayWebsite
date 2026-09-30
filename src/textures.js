@@ -244,7 +244,7 @@ export function cardCoverTexture(cfg) {
   roundRect(ctx, 60, 60, w - 120, h - 120, 26);
   ctx.stroke();
 
-  // "22" medál
+  // Életkor-medál
   ctx.save();
   ctx.shadowColor = 'rgba(168,35,90,0.3)';
   ctx.shadowBlur = 30;

@@ -164,7 +164,7 @@ async function init() {
 
   gift = createGift(glowTex);
   card = createCard(config, images);
-  cake = createCake(glowTex, smoke);
+  cake = createCake(glowTex, smoke, config.age);
   gallery = createGallery(config, images, camera);
   slice = createSlice(config);
   scene.add(gift.group, card.root, cake.root, gallery.ring, slice.root);
@@ -460,10 +460,7 @@ canvas.addEventListener('click', (ev) => {
   }
   else if (state === 'cake') {
     const hit = pick(ev, cake.hitTargets);
-    if (!hit) return;
-    let i = hit.userData.candleIndex;
-    if (i === undefined) i = hit.position.x < 0 ? 0 : 1;
-    blowCandle(i);
+    if (hit) blowCandle(hit.userData.candleIndex);
   } else if (state === 'finale') {
     const hit = pick(ev, gallery.hitTargets);
     if (hit || gallery.focused) gallery.click(hit);

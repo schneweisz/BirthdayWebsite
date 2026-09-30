@@ -9,7 +9,10 @@ const TOP_Y = BOTTOM.h + TOP.h; // a felső szint teteje
 
 const SPRINKLE_COLORS = ['#ff5c9a', '#ffffff', '#c7a3ff', '#ffd36b', '#7fd8ff', '#ff9ec7'];
 
-export function createCake(glowTex, smoke) {
+const CANDLE_GAP = 0.04;
+const CANDLES_MAX_W = 1.6; // ennél szélesebb sor már lelógna a felső szintről
+
+export function createCake(glowTex, smoke, age) {
   const root = new THREE.Group();
   const cake = new THREE.Group();
   root.add(cake);
@@ -64,13 +67,20 @@ export function createCake(glowTex, smoke) {
     cake.add(h);
   }
 
-  // ── "22" gyertyák lánggal ───────────────────────────────────
+  // ── Számgyertyák lánggal (az életkor számjegyei egymás mellett) ─
   const flameTex = flameTexture();
   const candles = [];
-  [-0.25, 0.25].forEach((x, i) => {
-    const candle = createNumberTwo();
+  const digits = (String(age ?? '').replace(/\D/g, '') || '0').split('').map(createDigitCandle);
+  const rowW = digits.reduce((w, d) => w + d.width, 0) + CANDLE_GAP * (digits.length - 1);
+  const rowScale = Math.min(1, CANDLES_MAX_W / rowW);
+  let left = -rowW / 2;
+  digits.forEach((candle, i) => {
+    const x = (left + candle.width / 2) * rowScale;
+    left += candle.width + CANDLE_GAP;
     candle.mesh.position.set(x, TOP_Y - 0.02, 0.05);
     candle.mesh.rotation.y = -x * 0.3;
+    candle.mesh.scale.setScalar(rowScale);
+    candle.mesh.userData.candleIndex = i;
     cake.add(candle.mesh);
 
     candle.mesh.updateMatrix();
@@ -227,47 +237,143 @@ function addSprinkles(parent, rMin, rMax, y, count) {
   parent.add(mesh);
 }
 
-/** Kihúzott "2"-es számgyertya; visszaadja a mesh-t és a kanóc helyét */
-function createNumberTwo() {
-  const s = 0.6; // magasság
-  const C = [0.35 * s, 0.68 * s];
-  const R = 0.32 * s;
-  const r = 0.12 * s;
-  const d2r = Math.PI / 180;
+// ── Számgyertyák (0–9) ────────────────────────────────────────
+// A számjegyek körvonala egységnyi magasságú (y: 0..1) mezőben, 0.2 vonalvastagsággal;
+// egy számjegy több, egymást átfedő alakzatból is állhat. A kanóc mindig a tetején (y = 1) ül.
+const DIGIT_H = 0.6; // a gyertya magassága
+const HALF = 0.1; // fél vonalvastagság
+const d2r = Math.PI / 180;
 
+function poly(...pts) {
+  return new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+}
+
+const rect = (x0, y0, x1, y1) => poly([x0, y0], [x1, y0], [x1, y1], [x0, y1]);
+
+/** Körív-sáv az r sugarú középvonal mentén, a0-tól a1 fokig (az óramutatóval ellentétesen) */
+function band(cx, cy, r, a0, a1) {
+  const ro = r + HALF;
+  const ri = r - HALF;
+  const shape = new THREE.Shape();
+  shape.moveTo(cx + ro * Math.cos(a0 * d2r), cy + ro * Math.sin(a0 * d2r));
+  shape.absarc(cx, cy, ro, a0 * d2r, a1 * d2r, false);
+  shape.lineTo(cx + ri * Math.cos(a1 * d2r), cy + ri * Math.sin(a1 * d2r));
+  shape.absarc(cx, cy, ri, a1 * d2r, a0 * d2r, true);
+  shape.closePath();
+  return shape;
+}
+
+function ring(cx, cy, r) {
+  const shape = new THREE.Shape();
+  shape.absarc(cx, cy, r + HALF, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(cx, cy, r - HALF, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+  return shape;
+}
+
+function zeroShape() {
+  const stadium = (path, r) => {
+    path.moveTo(0.35 + r, 0.32);
+    path.lineTo(0.35 + r, 0.68);
+    path.absarc(0.35, 0.68, r, 0, Math.PI, false);
+    path.lineTo(0.35 - r, 0.32);
+    path.absarc(0.35, 0.32, r, Math.PI, Math.PI * 2, false);
+    return path;
+  };
+  const shape = stadium(new THREE.Shape(), 0.32);
+  shape.holes.push(stadium(new THREE.Path(), 0.12));
+  return shape;
+}
+
+function twoShape() {
+  const C = [0.35, 0.68];
+  const R = 0.32;
+  const r = 0.12;
   const shape = new THREE.Shape();
   shape.moveTo(0, 0);
-  shape.lineTo(0.72 * s, 0);
-  shape.lineTo(0.72 * s, 0.2 * s);
-  shape.lineTo(0.34 * s, 0.2 * s);
+  shape.lineTo(0.72, 0);
+  shape.lineTo(0.72, 0.2);
+  shape.lineTo(0.34, 0.2);
   shape.lineTo(C[0] + R * Math.cos(-30 * d2r), C[1] + R * Math.sin(-30 * d2r));
   shape.absarc(C[0], C[1], R, -30 * d2r, 165 * d2r, false);
   shape.lineTo(C[0] + r * Math.cos(165 * d2r), C[1] + r * Math.sin(165 * d2r));
   shape.absarc(C[0], C[1], r, 165 * d2r, -35 * d2r, true);
-  shape.lineTo(0, 0.2 * s);
+  shape.lineTo(0, 0.2);
   shape.closePath();
+  return shape;
+}
 
+// számjegy → { shapes, wickX }
+const DIGITS = {
+  0: () => ({ shapes: [zeroShape()], wickX: 0.35 }),
+  1: () => ({
+    shapes: [rect(0.3, 0, 0.5, 1), poly([0.06, 0.74], [0.2, 0.6], [0.45, 0.85], [0.32, 1])],
+    wickX: 0.4,
+  }),
+  2: () => ({ shapes: [twoShape()], wickX: 0.35 }),
+  3: () => ({ shapes: [band(0.35, 0.7, 0.2, -90, 150), band(0.35, 0.3, 0.2, -150, 90)], wickX: 0.35 }),
+  4: () => ({
+    shapes: [
+      rect(0.44, 0, 0.64, 1),
+      rect(0.02, 0.24, 0.74, 0.44),
+      poly([0.02, 0.34], [0.195, 0.34], [0.5, 0.747], [0.5, 1], [0.44, 1], [0.02, 0.44]),
+    ],
+    wickX: 0.54,
+  }),
+  5: () => ({
+    shapes: [
+      rect(0.12, 0.8, 0.64, 1),
+      poly([0.12, 1], [0.12, 0.5615], [0.251, 0.411], [0.32, 0.5], [0.32, 1]),
+      band(0.33, 0.32, 0.22, -150, 131),
+    ],
+    wickX: 0.38,
+  }),
+  6: () => ({
+    shapes: [ring(0.35, 0.32, 0.22), rect(0.03, 0.3, 0.23, 0.7), band(0.35, 0.68, 0.22, 35, 180)],
+    wickX: 0.35,
+  }),
+  7: () => ({
+    shapes: [rect(0.05, 0.8, 0.65, 1), poly([0.2, 0], [0.41, 0], [0.65, 0.9], [0.44, 0.9])],
+    wickX: 0.35,
+  }),
+  8: () => ({ shapes: [ring(0.35, 0.7, 0.2), ring(0.35, 0.3, 0.2)], wickX: 0.35 }),
+  9: () => ({
+    shapes: [ring(0.35, 0.68, 0.22), rect(0.47, 0.3, 0.67, 0.7), band(0.35, 0.32, 0.22, 215, 360)],
+    wickX: 0.35,
+  }),
+};
+
+let candleMats = null;
+
+/** Kihúzott számgyertya; visszaadja a mesh-t, a szélességét és a kanóc helyét */
+function createDigitCandle(digit) {
+  const { shapes, wickX } = DIGITS[digit]();
   const depth = 0.1;
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth, curveSegments: 32, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.018, bevelSegments: 4,
+  const bevel = 0.018;
+  const geo = new THREE.ExtrudeGeometry(shapes, {
+    depth, curveSegments: 32, bevelEnabled: true, bevelThickness: 0.025, bevelSize: bevel / DIGIT_H, bevelSegments: 4,
   });
+  geo.scale(DIGIT_H, DIGIT_H, 1);
   geo.computeBoundingBox();
-  const cx = (geo.boundingBox.min.x + geo.boundingBox.max.x) / 2;
-  geo.translate(-cx, 0.018, -depth / 2);
+  const { min, max } = geo.boundingBox;
+  const cx = (min.x + max.x) / 2;
+  geo.translate(-cx, bevel, -depth / 2);
 
-  const face = new THREE.MeshPhysicalMaterial({
-    color: '#ff86b9', roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1, iridescence: 0.5, sheen: 0.6, sheenColor: new THREE.Color('#ffe4f0'),
-  });
-  const side = new THREE.MeshStandardMaterial({ color: '#f1c67a', metalness: 0.9, roughness: 0.3 });
+  candleMats ??= [
+    new THREE.MeshPhysicalMaterial({
+      color: '#ff86b9', roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.1, iridescence: 0.5, sheen: 0.6, sheenColor: new THREE.Color('#ffe4f0'),
+    }),
+    new THREE.MeshStandardMaterial({ color: '#f1c67a', metalness: 0.9, roughness: 0.3 }),
+    new THREE.MeshStandardMaterial({ color: '#2b2023', roughness: 0.9 }),
+  ];
+  const [face, side, wickMat] = candleMats;
   const mesh = new THREE.Mesh(geo, [face, side]);
 
-  const topY = C[1] + R + 0.018 * 2;
-  const wick = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.008, 0.01, 0.07, 8),
-    new THREE.MeshStandardMaterial({ color: '#2b2023', roughness: 0.9 }),
-  );
-  wick.position.set(C[0] - cx, topY + 0.03, 0);
+  const topY = DIGIT_H + bevel * 2;
+  const wick = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.07, 8), wickMat);
+  wick.position.set(wickX * DIGIT_H - cx, topY + 0.03, 0);
   mesh.add(wick);
 
-  return { mesh, wickTop: new THREE.Vector3(C[0] - cx, topY + 0.065, 0) };
+  return { mesh, width: max.x - min.x, wickTop: new THREE.Vector3(wickX * DIGIT_H - cx, topY + 0.065, 0) };
 }

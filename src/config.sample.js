@@ -5,8 +5,8 @@
 //  A képeket a  public/photos/  mappába tedd, és itt hivatkozz rájuk.
 // ─────────────────────────────────────────────────────────────
 
-// Hányadik szülinap – elég itt átírni, a szövegek lentebb ezt használják
-// (a gyertyák a tortán mindig "22"-t mutatnak)
+// Hányadik szülinap – elég itt átírni: a szövegek lentebb ezt használják,
+// és a tortán is ezek a számgyertyák égnek (pl. 21 → egy "2"-es és egy "1"-es)
 const age = 22;
 
 export const config = {

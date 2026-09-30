@@ -7,7 +7,7 @@ Three.js + Vite alapú, teljesen 3D-s születésnapi oldal:
 1. **Ajándékdoboz** lebeg és forog. Koppintásra megrázkódik, lerepül a teteje, szétnyílnak a falai.
 2. **Képeslap** emelkedik ki belőle. Koppintásra kinyílik: bal oldalon fotók, jobb oldalon az üzenet
    (egy oldalra koppintva ránagyít, ami telefonon hasznos). Az üzenet „kézzel” íródik ki.
-3. **Torta** „22”-es égő gyertyákkal. El lehet fújni **mikrofonba fújva**, vagy a gyertyákra koppintva.
+3. **Torta** az életkort mutató, égő számgyertyákkal (a `config.js` `age` értéke alapján). El lehet fújni **mikrofonba fújva**, vagy a gyertyákra koppintva.
 4. **Finálé:** elsötétül, majd konfetti, tűzijáték, lufik és zene jön (saját mp3, vagy zenedobozos
    „Happy Birthday”, ha nincs), a képek pedig körbe keringenek a torta körül (koppintásra előrejönnek).
 5. **Csillagos égbolt:** a „Nézz fel az égre” gombra besötétedik, hullócsillagok suhannak át.
